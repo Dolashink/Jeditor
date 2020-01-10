@@ -15,6 +15,7 @@ UM.ui.define("scale", {
     $doc: $(document),
     $wrap: $(document)
   },
+  _ratio: 1,
   init: function(options) {
     if (options.$doc) this.defaultOpt.$doc = options.$doc;
     if (options.$wrap) this.defaultOpt.$wrap = options.$wrap;
@@ -46,6 +47,9 @@ UM.ui.define("scale", {
       case "mousedown":
         var hand = e.target || e.srcElement,
           hand;
+        var sourceWidth = me._$el.width();
+        var sourceHeight = me._$el.height();
+        me._ratio = sourceHeight / sourceWidth;
         if (hand.className.indexOf("edui-scale-hand") != -1) {
           me.dragId = hand.className.slice(-1);
           me.startPos.x = me.prePos.x = e.clientX;
@@ -55,10 +59,14 @@ UM.ui.define("scale", {
         break;
       case "mousemove":
         if (me.dragId != -1) {
-          me.updateContainerStyle(me.dragId, {
-            x: e.clientX - me.prePos.x,
-            y: e.clientY - me.prePos.y
-          });
+          me.updateContainerStyle(
+            me.dragId,
+            {
+              x: e.clientX - me.prePos.x,
+              y: (e.clientX - me.prePos.x) * me._ratio
+            },
+            me._ratio
+          );
           me.prePos.x = e.clientX;
           me.prePos.y = e.clientY;
           me.updateTargetElement();
@@ -84,7 +92,7 @@ UM.ui.define("scale", {
     $target.css({ width: $root.width(), height: $root.height() });
     me.attachTo($target);
   },
-  updateContainerStyle: function(dir, offset) {
+  updateContainerStyle: function(dir, offset, ratio) {
     var me = this,
       $dom = me.root(),
       tmp,
@@ -92,10 +100,10 @@ UM.ui.define("scale", {
         //[left, top, width, height]
         [0, 0, -1, -1],
         [0, 0, 0, -1],
-        [0, 0, 1, -1],
+        [0, 0, 1, 1],
         [0, 0, -1, 0],
         [0, 0, 1, 0],
-        [0, 0, -1, 1],
+        [0, 0, -1, -1],
         [0, 0, 0, 1],
         [0, 0, 1, 1]
       ];
@@ -114,8 +122,12 @@ UM.ui.define("scale", {
     }
     if (rect[dir][3] != 0) {
       tmp = $dom.height() + rect[dir][3] * offset.y;
-      $dom.css("height", me._validScaledProp("height", tmp));
+      $dom.css("height", me._getCurrentHeight(ratio));
     }
+  },
+  _getCurrentHeight: function(ratio) {
+    var me = this;
+    return me.root().width() * ratio;
   },
   _validScaledProp: function(prop, value) {
     var $ele = this.root(),

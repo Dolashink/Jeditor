@@ -1,7 +1,7 @@
 /*!
  * UEditor Mini版本
  * version: 1.2.2
- * build: Fri Dec 13 2019 10:56:45 GMT+0800 (GMT+08:00)
+ * build: Tue Dec 17 2019 20:21:49 GMT+0800 (GMT+08:00)
  */
 
 (function($){
@@ -6081,10 +6081,11 @@ UM.plugins["link"] = function() {
 
   this.addOutputRule(function(root) {
     $.each(root.getNodesByTagName("a"), function(i, a) {
-      var _href = a.getAttr("_href");
+      var _href = a.getAttr("href");
       if (!/^(ftp|https?|\/|file)/.test(_href)) {
         _href = "http://" + _href;
       }
+      if (_href != "http://undefined") a.setAttr("href", _href);
       a.setAttr("href", _href);
       a.setAttr("_href");
       if (a.getAttr("title") == "") {
@@ -6212,21 +6213,28 @@ UM.commands['print'] = {
  * @param   {String}   attrs               标签的属性
  * @author zhanyi
  */
-UM.plugins['paragraph'] = function() {
-    var me = this;
-    me.setOpt('paragraph',{'p':'', 'h1':'', 'h2':'', 'h3':'', 'h4':'', 'h5':'', 'h6':''});
-    me.commands['paragraph'] = {
-        execCommand : function( cmdName, style ) {
-            return this.document.execCommand('formatBlock',false,'<' + style + '>');
-        },
-        queryCommandValue : function() {
-            try{
-                var  val = this.document.queryCommandValue('formatBlock')
-            }catch(e){
-            }
-            return val ;
-        }
-    };
+UM.plugins["paragraph"] = function() {
+  var me = this;
+  me.setOpt("paragraph", {
+    p: "",
+    h1: "",
+    h2: "",
+    h3: "",
+    h4: "",
+    h5: "",
+    h6: ""
+  });
+  me.commands["paragraph"] = {
+    execCommand: function(cmdName, style) {
+      return this.document.execCommand("formatBlock", false, "<" + style + ">");
+    },
+    queryCommandValue: function() {
+      try {
+        var val = this.document.queryCommandValue("formatBlock");
+      } catch (e) {}
+      return val;
+    }
+  };
 };
 
 ///import core
@@ -6780,86 +6788,103 @@ UM.plugins['paste'] = function () {
  * @author zhanyi
  */
 
-UM.plugins['list'] = function () {
-    var me = this;
+UM.plugins["list"] = function() {
+  var me = this;
 
-    me.setOpt( {
-        'insertorderedlist':{
-            'decimal':'',
-            'lower-alpha':'',
-            'lower-roman':'',
-            'upper-alpha':'',
-            'upper-roman':''
-        },
-        'insertunorderedlist':{
-            'circle':'',
-            'disc':'',
-            'square':''
-        }
-    } );
+  me.setOpt({
+    insertorderedlist: {
+      decimal: "",
+      "lower-alpha": "",
+      "lower-roman": "",
+      "upper-alpha": "",
+      "upper-roman": ""
+    },
+    insertunorderedlist: {
+      circle: "",
+      disc: "",
+      square: ""
+    }
+  });
 
-    this.addInputRule(function(root){
-        utils.each(root.getNodesByTagName('li'), function (node) {
-            if(node.children.length == 0){
-                node.parentNode.removeChild(node);
-            }
-        })
+  function getCss(type) {
+    return {
+      margin: 0,
+      padding: 0,
+      "padding-left": "2.2em",
+      "list-style-type": type,
+      "max-width": "100%",
+      "box-sizing": "border-box",
+      "word-wrap": "break-word"
+    };
+  }
+
+  this.addInputRule(function(root) {
+    utils.each(root.getNodesByTagName("li"), function(node) {
+      if (node.children.length == 0) {
+        node.parentNode.removeChild(node);
+      }
     });
-    me.commands['insertorderedlist'] =
-    me.commands['insertunorderedlist'] = {
-            execCommand:function (cmdName) {
-                this.document.execCommand(cmdName);
-                var rng = this.selection.getRange(),
-                    bk = rng.createBookmark(true);
+  });
+  me.commands["insertorderedlist"] = me.commands["insertunorderedlist"] = {
+    execCommand: function(cmdName) {
+      this.document.execCommand(cmdName);
+      var rng = this.selection.getRange(),
+        bk = rng.createBookmark(true);
 
-                this.$body.find('ol,ul').each(function(i,n){
-                    var parent = n.parentNode;
-                    if(parent.tagName == 'P' && parent.lastChild === parent.firstChild){
-                        $(n).children().each(function(j,li){
-                            var p = parent.cloneNode(false);
-                            $(p).append(li.innerHTML);
-                            $(li).html('').append(p);
-                        });
-                        $(n).insertBefore(parent);
-                        $(parent).remove();
-                    }
+      this.$body.find("ol,ul").each(function(i, n) {
+        var parent = n.parentNode;
+        if (parent.tagName == "P" && parent.lastChild === parent.firstChild) {
+          if ($(n).is("ol")) {
+            $(n).css(getCss("decimal"));
+          } else {
+            $(n).css(getCss("disc"));
+          }
+          $(n)
+            .children()
+            .each(function(j, li) {
+              var p = parent.cloneNode(false);
+              $(p).append(li.innerHTML);
+              $(li)
+                .html("")
+                .append(p);
+            });
+          $(n).insertBefore(parent);
+          $(parent).remove();
+        }
 
-                    if(dtd.$inline[parent.tagName]){
-                        if(parent.tagName == 'SPAN'){
+        if (dtd.$inline[parent.tagName]) {
+          if (parent.tagName == "SPAN") {
+            $(n)
+              .children()
+              .each(function(k, li) {
+                var span = parent.cloneNode(false);
+                if (li.firstChild.nodeName != "P") {
+                  while (li.firstChild) {
+                    span.appendChild(li.firstChild);
+                  }
+                  $("<p></p>")
+                    .appendTo(li)
+                    .append(span);
+                } else {
+                  while (li.firstChild) {
+                    span.appendChild(li.firstChild);
+                  }
+                  $(li.firstChild).append(span);
+                }
+              });
+          }
+          domUtils.remove(parent, true);
+        }
+      });
 
-                            $(n).children().each(function(k,li){
-                                var span = parent.cloneNode(false);
-                                if(li.firstChild.nodeName != 'P'){
-
-                                    while(li.firstChild){
-                                        span.appendChild(li.firstChild)
-                                    };
-                                    $('<p></p>').appendTo(li).append(span);
-                                }else{
-                                    while(li.firstChild){
-                                        span.appendChild(li.firstChild)
-                                    };
-                                    $(li.firstChild).append(span);
-                                }
-                            })
-
-                        }
-                        domUtils.remove(parent,true)
-                    }
-                });
-
-
-
-
-                rng.moveToBookmark(bk).select();
-                return true;
-            },
-            queryCommandState:function (cmdName) {
-                return this.document.queryCommandState(cmdName);
-            }
-        };
+      rng.moveToBookmark(bk).select();
+      return true;
+    },
+    queryCommandState: function(cmdName) {
+      return this.document.queryCommandState(cmdName);
+    }
+  };
 };
-
 
 ///import core
 ///import plugins/serialize.js
@@ -8292,181 +8317,209 @@ UM.plugins.xssFilter = function() {
 
 };
 
-(function ($) {
-    //对jquery的扩展
-    $.parseTmpl = function parse(str, data) {
-        var tmpl = 'var __p=[],print=function(){__p.push.apply(__p,arguments);};' + 'with(obj||{}){__p.push(\'' + str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/<%=([\s\S]+?)%>/g,function (match, code) {
-            return "',obj." + code.replace(/\\'/g, "'") + ",'";
-        }).replace(/<%([\s\S]+?)%>/g,function (match, code) {
-                return "');" + code.replace(/\\'/g, "'").replace(/[\r\n\t]/g, ' ') + "__p.push('";
-            }).replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/\t/g, '\\t') + "');}return __p.join('');";
-        var func = new Function('obj', tmpl);
-        return data ? func(data) : func;
-    };
-    $.extend2 = function (t, s) {
-        var a = arguments,
-            notCover = $.type(a[a.length - 1]) == 'boolean' ? a[a.length - 1] : false,
-            len = $.type(a[a.length - 1]) == 'boolean' ? a.length - 1 : a.length;
-        for (var i = 1; i < len; i++) {
-            var x = a[i];
-            for (var k in x) {
-                if (!notCover || !t.hasOwnProperty(k)) {
-                    t[k] = x[k];
-                }
-            }
-        }
-        return t;
-    };
-
-    $.IE6 = !!window.ActiveXObject && parseFloat(navigator.userAgent.match(/msie (\d+)/i)[1]) == 6;
-
-    //所有ui的基类
-    var _eventHandler = [];
-    var _widget = function () {
-    };
-    var _prefix = 'edui';
-    _widget.prototype = {
-        on: function (ev, cb) {
-            this.root().on(ev, $.proxy(cb, this));
-            return this;
-        },
-        off: function (ev, cb) {
-            this.root().off(ev, $.proxy(cb, this));
-            return this;
-        },
-        trigger: function (ev, data) {
-            return  this.root().trigger(ev, data) === false ? false : this;
-        },
-        root: function ($el) {
-            return this._$el || (this._$el = $el);
-        },
-        destroy: function () {
-
-        },
-        data: function (key, val) {
-            if (val !== undefined) {
-                this.root().data(_prefix + key, val);
-                return this;
-            } else {
-                return this.root().data(_prefix + key)
-            }
-        },
-        register: function (eventName, $el, fn) {
-            _eventHandler.push({
-                'evtname': eventName,
-                '$els': $.isArray($el) ? $el : [$el],
-                handler: $.proxy(fn, $el)
-            })
-        }
-    };
-
-    //从jq实例上拿到绑定的widget实例
-    $.fn.edui = function (obj) {
-        return obj ? this.data('eduiwidget', obj) : this.data('eduiwidget');
-    };
-
-    function _createClass(ClassObj, properties, supperClass) {
-        ClassObj.prototype = $.extend2(
-            $.extend({}, properties),
-            (UM.ui[supperClass] || _widget).prototype,
-            true
-        );
-        ClassObj.prototype.supper = (UM.ui[supperClass] || _widget).prototype;
-        //父class的defaultOpt 合并
-        if( UM.ui[supperClass] && UM.ui[supperClass].prototype.defaultOpt ) {
-
-            var parentDefaultOptions = UM.ui[supperClass].prototype.defaultOpt,
-                subDefaultOptions = ClassObj.prototype.defaultOpt;
-
-            ClassObj.prototype.defaultOpt = $.extend( {}, parentDefaultOptions, subDefaultOptions || {} );
-
-        }
-        return ClassObj
-    }
-
-    var _guid = 1;
-
-    function mergeToJQ(ClassObj, className) {
-        $[_prefix + className] = ClassObj;
-        $.fn[_prefix + className] = function (opt) {
-            var result, args = Array.prototype.slice.call(arguments, 1);
-
-            this.each(function (i, el) {
-                var $this = $(el);
-                var obj = $this.edui();
-                if (!obj) {
-                    ClassObj(!opt || !$.isPlainObject(opt) ? {} : opt, $this);
-                    $this.edui(obj)
-                }
-                if ($.type(opt) == 'string') {
-                    if (opt == 'this') {
-                        result = obj;
-                    } else {
-                        result = obj[opt].apply(obj, args);
-                        if (result !== obj && result !== undefined) {
-                            return false;
-                        }
-                        result = null;
-                    }
-
-                }
-            });
-
-            return result !== null ? result : this;
-        }
-    }
-
-    UM.ui = {
-        define: function (className, properties, supperClass) {
-            var ClassObj = UM.ui[className] = _createClass(function (options, $el) {
-                    var _obj = function () {
-                    };
-                    $.extend(_obj.prototype, ClassObj.prototype, {
-                            guid: className + _guid++,
-                            widgetName: className
-                        }
-                    );
-                    var obj = new _obj;
-                    if ($.type(options) == 'string') {
-                        obj.init && obj.init({});
-                        obj.root().edui(obj);
-                        obj.root().find('a').click(function (evt) {
-                            evt.preventDefault()
-                        });
-                        return obj.root()[_prefix + className].apply(obj.root(), arguments)
-                    } else {
-                        $el && obj.root($el);
-                        obj.init && obj.init(!options || $.isPlainObject(options) ? $.extend2(options || {}, obj.defaultOpt || {}, true) : options);
-                        try{
-                            obj.root().find('a').click(function (evt) {
-                                evt.preventDefault()
-                            });
-                        }catch(e){
-                        }
-
-                        return obj.root().edui(obj);
-                    }
-
-                },properties, supperClass);
-
-            mergeToJQ(ClassObj, className);
-        }
-    };
-
-    $(function () {
-        $(document).on('click mouseup mousedown dblclick mouseover', function (evt) {
-            $.each(_eventHandler, function (i, obj) {
-                if (obj.evtname == evt.type) {
-                    $.each(obj.$els, function (i, $el) {
-                        if ($el[0] !== evt.target && !$.contains($el[0], evt.target)) {
-                            obj.handler(evt);
-                        }
-                    })
-                }
-            })
+(function($) {
+  //对jquery的扩展
+  $.parseTmpl = function parse(str, data) {
+    var tmpl =
+      "var __p=[],print=function(){__p.push.apply(__p,arguments);};" +
+      "with(obj||{}){__p.push('" +
+      str
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'")
+        .replace(/<%=([\s\S]+?)%>/g, function(match, code) {
+          return "'," + code.replace(/\\'/g, "'") + ",'";
         })
-    })
+        .replace(/<%([\s\S]+?)%>/g, function(match, code) {
+          return (
+            "');" +
+            code.replace(/\\'/g, "'").replace(/[\r\n\t]/g, " ") +
+            "__p.push('"
+          );
+        })
+        .replace(/\r/g, "\\r")
+        .replace(/\n/g, "\\n")
+        .replace(/\t/g, "\\t") +
+      "');}return __p.join('');";
+    var func = new Function("obj", tmpl);
+    return data ? func(data) : func;
+  };
+  $.extend2 = function(t, s) {
+    var a = arguments,
+      notCover = $.type(a[a.length - 1]) == "boolean" ? a[a.length - 1] : false,
+      len = $.type(a[a.length - 1]) == "boolean" ? a.length - 1 : a.length;
+    for (var i = 1; i < len; i++) {
+      var x = a[i];
+      for (var k in x) {
+        if (!notCover || !t.hasOwnProperty(k)) {
+          t[k] = x[k];
+        }
+      }
+    }
+    return t;
+  };
+
+  $.IE6 =
+    !!window.ActiveXObject &&
+    parseFloat(navigator.userAgent.match(/msie (\d+)/i)[1]) == 6;
+
+  //所有ui的基类
+  var _eventHandler = [];
+  var _widget = function() {};
+  var _prefix = "edui";
+  _widget.prototype = {
+    on: function(ev, cb) {
+      this.root().on(ev, $.proxy(cb, this));
+      return this;
+    },
+    off: function(ev, cb) {
+      this.root().off(ev, $.proxy(cb, this));
+      return this;
+    },
+    trigger: function(ev, data) {
+      return this.root().trigger(ev, data) === false ? false : this;
+    },
+    root: function($el) {
+      return this._$el || (this._$el = $el);
+    },
+    destroy: function() {},
+    data: function(key, val) {
+      if (val !== undefined) {
+        this.root().data(_prefix + key, val);
+        return this;
+      } else {
+        return this.root().data(_prefix + key);
+      }
+    },
+    register: function(eventName, $el, fn) {
+      _eventHandler.push({
+        evtname: eventName,
+        $els: $.isArray($el) ? $el : [$el],
+        handler: $.proxy(fn, $el)
+      });
+    }
+  };
+
+  //从jq实例上拿到绑定的widget实例
+  $.fn.edui = function(obj) {
+    return obj ? this.data("eduiwidget", obj) : this.data("eduiwidget");
+  };
+
+  function _createClass(ClassObj, properties, supperClass) {
+    ClassObj.prototype = $.extend2(
+      $.extend({}, properties),
+      (UM.ui[supperClass] || _widget).prototype,
+      true
+    );
+    ClassObj.prototype.supper = (UM.ui[supperClass] || _widget).prototype;
+    //父class的defaultOpt 合并
+    if (UM.ui[supperClass] && UM.ui[supperClass].prototype.defaultOpt) {
+      var parentDefaultOptions = UM.ui[supperClass].prototype.defaultOpt,
+        subDefaultOptions = ClassObj.prototype.defaultOpt;
+
+      ClassObj.prototype.defaultOpt = $.extend(
+        {},
+        parentDefaultOptions,
+        subDefaultOptions || {}
+      );
+    }
+    return ClassObj;
+  }
+
+  var _guid = 1;
+
+  function mergeToJQ(ClassObj, className) {
+    $[_prefix + className] = ClassObj;
+    $.fn[_prefix + className] = function(opt) {
+      var result,
+        args = Array.prototype.slice.call(arguments, 1);
+
+      this.each(function(i, el) {
+        var $this = $(el);
+        var obj = $this.edui();
+        if (!obj) {
+          ClassObj(!opt || !$.isPlainObject(opt) ? {} : opt, $this);
+          $this.edui(obj);
+        }
+        if ($.type(opt) == "string") {
+          if (opt == "this") {
+            result = obj;
+          } else {
+            result = obj[opt].apply(obj, args);
+            if (result !== obj && result !== undefined) {
+              return false;
+            }
+            result = null;
+          }
+        }
+      });
+
+      return result !== null ? result : this;
+    };
+  }
+
+  UM.ui = {
+    define: function(className, properties, supperClass) {
+      var ClassObj = (UM.ui[className] = _createClass(
+        function(options, $el) {
+          var _obj = function() {};
+          $.extend(_obj.prototype, ClassObj.prototype, {
+            guid: className + _guid++,
+            widgetName: className
+          });
+          var obj = new _obj();
+          if ($.type(options) == "string") {
+            obj.init && obj.init({});
+            obj.root().edui(obj);
+            obj
+              .root()
+              .find("a")
+              .click(function(evt) {
+                evt.preventDefault();
+              });
+            return obj.root()[_prefix + className].apply(obj.root(), arguments);
+          } else {
+            $el && obj.root($el);
+            obj.init &&
+              obj.init(
+                !options || $.isPlainObject(options)
+                  ? $.extend2(options || {}, obj.defaultOpt || {}, true)
+                  : options
+              );
+            try {
+              obj
+                .root()
+                .find("a")
+                .click(function(evt) {
+                  evt.preventDefault();
+                });
+            } catch (e) {}
+
+            return obj.root().edui(obj);
+          }
+        },
+        properties,
+        supperClass
+      ));
+
+      mergeToJQ(ClassObj, className);
+    }
+  };
+
+  $(function() {
+    $(document).on("click mouseup mousedown dblclick mouseover", function(evt) {
+      $.each(_eventHandler, function(i, obj) {
+        if (obj.evtname == evt.type) {
+          $.each(obj.$els, function(i, $el) {
+            if ($el[0] !== evt.target && !$.contains($el[0], evt.target)) {
+              obj.handler(evt);
+            }
+          });
+        }
+      });
+    });
+  });
 })(jQuery);
+
 //button 类
 UM.ui.define('button', {
     tpl: '<<%if : !${texttype}%>div class="edui-btn edui-btn-${icon} <%if : ${name}%>edui-btn-name-${name}<%/if%>" unselectable="on" onmousedown="return false" <%else%>a class="edui-text-btn"<%/if%><% if: ${title} %> data-original-title="${title}" <%/if%>> ' +
@@ -8875,6 +8928,7 @@ UM.ui.define("scale", {
     $doc: $(document),
     $wrap: $(document)
   },
+  _ratio: 1,
   init: function(options) {
     if (options.$doc) this.defaultOpt.$doc = options.$doc;
     if (options.$wrap) this.defaultOpt.$wrap = options.$wrap;
@@ -8906,6 +8960,9 @@ UM.ui.define("scale", {
       case "mousedown":
         var hand = e.target || e.srcElement,
           hand;
+        var sourceWidth = me._$el.width();
+        var sourceHeight = me._$el.height();
+        me._ratio = sourceHeight / sourceWidth;
         if (hand.className.indexOf("edui-scale-hand") != -1) {
           me.dragId = hand.className.slice(-1);
           me.startPos.x = me.prePos.x = e.clientX;
@@ -8915,10 +8972,14 @@ UM.ui.define("scale", {
         break;
       case "mousemove":
         if (me.dragId != -1) {
-          me.updateContainerStyle(me.dragId, {
-            x: e.clientX - me.prePos.x,
-            y: e.clientY - me.prePos.y
-          });
+          me.updateContainerStyle(
+            me.dragId,
+            {
+              x: e.clientX - me.prePos.x,
+              y: (e.clientX - me.prePos.x) * me._ratio
+            },
+            me._ratio
+          );
           me.prePos.x = e.clientX;
           me.prePos.y = e.clientY;
           me.updateTargetElement();
@@ -8944,7 +9005,7 @@ UM.ui.define("scale", {
     $target.css({ width: $root.width(), height: $root.height() });
     me.attachTo($target);
   },
-  updateContainerStyle: function(dir, offset) {
+  updateContainerStyle: function(dir, offset, ratio) {
     var me = this,
       $dom = me.root(),
       tmp,
@@ -8952,10 +9013,10 @@ UM.ui.define("scale", {
         //[left, top, width, height]
         [0, 0, -1, -1],
         [0, 0, 0, -1],
-        [0, 0, 1, -1],
+        [0, 0, 1, 1],
         [0, 0, -1, 0],
         [0, 0, 1, 0],
-        [0, 0, -1, 1],
+        [0, 0, -1, -1],
         [0, 0, 0, 1],
         [0, 0, 1, 1]
       ];
@@ -8974,8 +9035,12 @@ UM.ui.define("scale", {
     }
     if (rect[dir][3] != 0) {
       tmp = $dom.height() + rect[dir][3] * offset.y;
-      $dom.css("height", me._validScaledProp("height", tmp));
+      $dom.css("height", me._getCurrentHeight(ratio));
     }
+  },
+  _getCurrentHeight: function(ratio) {
+    var me = this;
+    return me.root().width() * ratio;
   },
   _validScaledProp: function(prop, value) {
     var $ele = this.root(),
