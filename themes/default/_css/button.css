@@ -23,9 +23,9 @@
 /*状态反射*/
 .edui-btn-toolbar .edui-btn.edui-hover,
 .edui-btn-toolbar .edui-btn.edui-active {
-  background-color: #d5e1f2;
+  background-color: #d9d9d9;
   padding: 0;
-  border: 1px solid #a3bde3;
+  border: 1px solid #b9b9b9;
   _z-index: 1;
 }
 .edui-btn-toolbar .edui-btn.edui-disabled {
